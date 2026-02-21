@@ -177,13 +177,15 @@ for i = 1:size(targetMpcOutput,2)
             numColumns = 15;
     end
     for timestep = 1:size(targetMpcOutput(i).MPC,1)
-%         if ~iscell(targetMpcOutput(i).mpc)            
-            app.timestepInfo(timestep).targetInfo(node,nodePaa).mpcs{target,joint,refl} ...
-                        = reshape(targetMpcOutput(i).MPC(timestep,:,:),[],numColumns);
-%          else
-%              app.timestepInfo(timestep).targetInfo(node,nodePaa).mpcs{target,joint,refl} = [];
-%         end
-
+        if ~iscell(targetMpcOutput(i).MPC)
+            mpcEntry = reshape(targetMpcOutput(i).MPC(timestep,:,:), [], numColumns);
+        else
+            mpcEntry = targetMpcOutput(i).MPC{timestep,1};
+            if ~isempty(mpcEntry)
+                mpcEntry = reshape(mpcEntry, [], numColumns);
+            end
+        end
+        app.timestepInfo(timestep).targetInfo(node,nodePaa).mpcs{target,joint,refl} = mpcEntry;
     end
 end
 
@@ -330,11 +332,11 @@ function setupPaas(app)
 paaOutput = readPaaJsonFile(sprintf('%s/PAAPosition.json',...
     app.visualizerPath));
 
-getPaaInfo = tabulate([paaOutput.Node]);
+getPaaInfo = tabulateNodeIds([paaOutput.Node]);
 
 app.numPaas = getPaaInfo(:,2);
 
-if app.numPaas < 1
+if any(app.numPaas < 1)
     error('There should be at least 1 paa per node in the scenario')
 end
 
@@ -344,7 +346,7 @@ function extractPaasInfo(app)
 
 paaPosOutput = readPaaJsonFile(sprintf('%s/PAAPosition.json',...
     app.visualizerPath));
-getPaaInfo = tabulate([paaPosOutput.Node]);
+getPaaInfo = tabulateNodeIds([paaPosOutput.Node]);
 for timestep = 1:size(app.timestepInfo,2) 
     index  = 1;
     paaPos = cell(max(getPaaInfo(:,2)),size(getPaaInfo,1));
@@ -366,4 +368,16 @@ for timestep = 1:size(app.timestepInfo,2)
 
 end
 
+end
+
+function out = tabulateNodeIds(nodeIds)
+%TABULATENODEIDS Replacement for tabulate without Statistics Toolbox.
+nodeValues = unique(nodeIds);
+numNodes = numel(nodeValues);
+counts = zeros(numNodes, 1);
+for idx = 1:numNodes
+    counts(idx) = sum(nodeIds == nodeValues(idx));
+end
+percentages = 100 * counts / numel(nodeIds);
+out = [nodeValues(:), counts, percentages];
 end

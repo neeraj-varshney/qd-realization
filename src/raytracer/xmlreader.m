@@ -61,13 +61,8 @@ s = xml2struct(filename);
 % Probing whether material information is present or not
 if isfield(s.amf, 'material')
     materialSwitch = 1;
-    
-    sizeMaterials1 = size(s.amf.material');
-    if sizeMaterials1(2)>1 &&  sizeMaterials1(1)==1
-        sizeMaterials = sizeMaterials1;
-    else
-        sizeMaterials = sizeMaterials1(1);
-    end
+    materials = toCellArray(s.amf.material);
+    numMaterials = numel(materials);
     
 else
     materialSwitch = 0;
@@ -77,41 +72,29 @@ end
 %% Iterating through all the subdivisions (volumes) and extracting the triangle information
 
 CADOutput = [];
-lengthObject = length(s.amf.object);
+objects = toCellArray(s.amf.object);
+lengthObject = numel(objects);
 for iterateObjects = 1:lengthObject                            % For multiple objects
-    if lengthObject == 1
-        volume = s.amf.object.mesh.volume';
-        sizeVolume = size(volume);
-        sObject = s.amf.object;
-    else
-        volume = s.amf.object{1, iterateObjects}.mesh.volume';
-        sizeVolume = size(volume);
-        sObject = s.amf.object{1, iterateObjects};
-    end
-    for iterateVolume = 1:sizeVolume
-        if sizeVolume(1) ~= 1
-            triangles = sObject.mesh.volume{1, iterateVolume}.triangle';
-        else
-            triangles = sObject.mesh.volume.triangle';
-        end
+    sObject = objects{iterateObjects};
+    volumes = toCellArray(sObject.mesh.volume);
+    numVolumes = numel(volumes);
+    for iterateVolume = 1:numVolumes
+        triangles = toCellArray(volumes{iterateVolume}.triangle);
+        numTriangles = numel(triangles);
         
         if materialSwitch == 1
-            if sizeVolume(1) ~= 1
-                materialId = sObject.mesh.volume{1, iterateVolume}.Attributes.materialid;
-            else
-                materialId = sObject.mesh.volume.Attributes.materialid;
-            end
+            materialId = volumes{iterateVolume}.Attributes.materialid;
             
-            for iterateMaterials = 1:sizeMaterials
-                if sizeMaterials ~= 1
+            for iterateMaterials = 1:numMaterials
+                if numMaterials ~= 1
                     if str2double(materialId) == str2double...
-                            (s.amf.material{1, iterateMaterials}.Attributes.id)
-                        material = s.amf.material{1, iterateMaterials}.metadata.Text;
+                            (materials{iterateMaterials}.Attributes.id)
+                        material = materials{iterateMaterials}.metadata.Text;
                     end
                     
-                elseif sizeVolume(1) == 1 && sizeMaterials == 1
-                    if str2double(materialId) == str2double(s.amf.material.Attributes.id)
-                        material = s.amf.material.metadata.Text;
+                elseif numVolumes == 1 && numMaterials == 1
+                    if str2double(materialId) == str2double(materials{1}.Attributes.id)
+                        material = materials{1}.metadata.Text;
                     end
                     
                 end
@@ -119,9 +102,8 @@ for iterateObjects = 1:lengthObject                            % For multiple ob
         end
         %% Extracting the vertices information of the triangles
         
-        sizeTriangle = size(triangles);
         CADOutputTemp = [];
-        for iterateTriangles = 1:sizeTriangle(1)
+        for iterateTriangles = 1:numTriangles
             if isfield(s.amf, 'Attributes')
                 switch s.amf.Attributes.unit
                     case 'micrometer'
@@ -142,11 +124,11 @@ for iterateObjects = 1:lengthObject                            % For multiple ob
                         error('xmlreader does not support this unit.');
                 end
                 v1 = getTriangleVertex(sObject, iterateVolume, ...
-                    iterateTriangles, 'v1', sizeVolume)*unitConversion;
+                    iterateTriangles, 'v1')*unitConversion;
                 v2 = getTriangleVertex(sObject, iterateVolume, ...
-                    iterateTriangles, 'v2', sizeVolume)*unitConversion;
+                    iterateTriangles, 'v2')*unitConversion;
                 v3 = getTriangleVertex(sObject, iterateVolume, ...
-                    iterateTriangles, 'v3', sizeVolume)*unitConversion;
+                    iterateTriangles, 'v3')*unitConversion;
             else
                 error('Length unit is missing in the xml/amf file. Add <amf  unit="?" in Line 1>');
             end
@@ -216,17 +198,24 @@ end
 
 
 %% Utils
-function v = getTriangleVertex(sObject, volumeIdx, triangIdx, vertexIdx, sizeVolume)
+function v = getTriangleVertex(sObject, volumeIdx, triangIdx, vertexIdx)
 
-if sizeVolume(1) ~= 1
-    vertex = str2double(sObject.mesh.volume{1, volumeIdx}.triangle{1, triangIdx}.(vertexIdx).Text)+1;
-else
-    vertex = str2double(sObject.mesh.volume.triangle{1, triangIdx}.(vertexIdx).Text)+1;
-end
+volumes = toCellArray(sObject.mesh.volume);
+triangles = toCellArray(volumes{volumeIdx}.triangle);
+vertex = str2double(triangles{triangIdx}.(vertexIdx).Text) + 1;
 
-x = str2double(sObject.mesh.vertices.vertex{1, vertex}.coordinates.x.Text);
-y = str2double(sObject.mesh.vertices.vertex{1, vertex}.coordinates.y.Text);
-z = str2double(sObject.mesh.vertices.vertex{1, vertex}.coordinates.z.Text);
+vertices = toCellArray(sObject.mesh.vertices.vertex);
+x = str2double(vertices{vertex}.coordinates.x.Text);
+y = str2double(vertices{vertex}.coordinates.y.Text);
+z = str2double(vertices{vertex}.coordinates.z.Text);
 v = [x, y, z];
 
+end
+
+function output = toCellArray(input)
+if iscell(input)
+    output = input;
+else
+    output = {input};
+end
 end
