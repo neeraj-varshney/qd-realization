@@ -56,10 +56,14 @@ for tx = nodeList
                 for nT = 0:nTarget-1
                     % Get MIMO channel per PAA
                     mimoCh = squeeze(output(tx,rx,:));
-                    % Extract MIMO channel per target
-                    indTarget = cellfun('isempty', mimoCh);
-                    mimoCh(indTarget) = {nan(1,21)}; % when target is not present
-                    mimoCh = cellfun(@(x) x(index(nT+1),:,:), mimoCh, 'UniformOutput', false);
+                    % Extract MIMO channel per target base index.
+                    % Some timesteps may miss rays for a given target; in
+                    % that case, keep a NaN placeholder instead of failing.
+                    currTargetIdx = index(nT+1);
+                    nMimo = paaNodes(tx)*paaNodes(rx);
+                    mimoCh = cellfun(@(x) extractTargetIndexOrNan( ...
+                        x, currTargetIdx, nOutput, nMimo), ...
+                        mimoCh, 'UniformOutput', false);
                     % Add NAN row at the end (To correct matlab behavior when handling a single entry)
                     mimoCh = cellfun(@(x) appendNan(x,nOutput,paaNodes(tx)*paaNodes(rx)), mimoCh, 'UniformOutput', false);
                     % Get SISO
@@ -106,5 +110,23 @@ elseif size(x,3)<m
     x(end+1,:,:) = nan;
 else
     x(end+1,:,:) = nan;
+end
+end
+
+function x = extractTargetIndexOrNan(x, idx, nOutput, nMimo)
+if isempty(x)
+    x = nan(1, nOutput, nMimo);
+    return
+end
+
+% Ensure MIMO dimension is available.
+if size(x,3) < nMimo
+    x(:, :, size(x,3)+1:nMimo) = nan;
+end
+
+if idx < 1 || idx > size(x,1)
+    x = nan(1, size(x,2), size(x,3));
+else
+    x = x(idx,:,:);
 end
 end

@@ -62,6 +62,10 @@ end
 para = fieldToNum(para, 'latitude', [], nan);
 para = fieldToNum(para, 'longitude', [], nan);
 para = fieldToNum(para, 'outdoorQueryRadius', [], 150);
+para = fieldToNum(para, 'outdoorOverpassTimeoutSec', [], 120);
+para = fieldToNum(para, 'outdoorOverpassQueryTimeoutSec', [], 60);
+para = fieldToNum(para, 'outdoorOverpassRetries', [], 2);
+para = fieldToNum(para, 'outdoorUseCachedOnFailure', [0,1], 1);
 
 if xor(isnan(para.latitude), isnan(para.longitude))
     error('Both ''latitude'' and ''longitude'' must be defined together.');
@@ -69,7 +73,11 @@ end
 
 if ~isnan(para.latitude) && ~isnan(para.longitude)
     para.environmentFileName = generateOutdoorAmfFromLatLon(...
-        scenarioNameStr, para.latitude, para.longitude, para.outdoorQueryRadius);
+        scenarioNameStr, para.latitude, para.longitude, para.outdoorQueryRadius, ...
+        'timeoutSec', para.outdoorOverpassTimeoutSec, ...
+        'queryTimeoutSec', para.outdoorOverpassQueryTimeoutSec, ...
+        'retriesPerEndpoint', para.outdoorOverpassRetries, ...
+        'useCachedOnFailure', para.outdoorUseCachedOnFailure);
     % Geo-generated environment is outdoor by definition.
     if para.indoorSwitch ~= 0
         warning('latitude/longitude provided: forcing indoorSwitch=0 for outdoor scenario.');

@@ -3,7 +3,7 @@ environmentFileName	OutdoorGeneratedFromLatLon.amf
 indoorSwitch	0
 numberOfTimeDivisions	50
 referencePoint	[0,0,0]
-selectPlanesByDist	inf
+selectPlanesByDist	80
 switchDiffuseComponent	0
 switchQDModel	tgayMeasurements
 totalNumberOfReflections	2
@@ -20,10 +20,14 @@ enablePhaseOutput	1
 latitude	40.7484
 longitude	-73.9857
 outdoorQueryRadius	60
+outdoorOverpassTimeoutSec	180
+outdoorOverpassQueryTimeoutSec	90
+outdoorOverpassRetries	3
+outdoorUseCachedOnFailure	1
 switchGenerateBoulicTargets	1
-boulicNumberOfTargets	1
+boulicNumberOfTargets	10
 boulicVelocityRange	[1,1]
-boulicStartXRange	[0,0]
-boulicStartYRange	[-30,-30]
-boulicDirectionRangeDeg	[0,0]
+boulicStartXRange	[-40,0]
+boulicStartYRange	[-40,-20]
+boulicDirectionRangeDeg	[0,180]
 boulicGroundZ	0

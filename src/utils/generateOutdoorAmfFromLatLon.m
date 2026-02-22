@@ -1,5 +1,5 @@
 function generatedEnvironmentFile = generateOutdoorAmfFromLatLon( ...
-    scenarioNameStr, latitude, longitude, queryRadiusMeters)
+    scenarioNameStr, latitude, longitude, queryRadiusMeters, varargin)
 %GENERATEOUTDOORAMFFROMLATLON Build AMF environment from OSM buildings.
 % Uses open-access Overpass API and writes a scenario-local AMF file.
 %
@@ -12,6 +12,24 @@ function generatedEnvironmentFile = generateOutdoorAmfFromLatLon( ...
 % OUTPUT:
 % - generatedEnvironmentFile: AMF filename written in Input/
 
+p = inputParser;
+addParameter(p, 'timeoutSec', 120);
+addParameter(p, 'queryTimeoutSec', 60);
+addParameter(p, 'retriesPerEndpoint', 2);
+addParameter(p, 'useCachedOnFailure', 1);
+addParameter(p, 'endpoints', { ...
+    'https://overpass-api.de/api/interpreter', ...
+    'https://overpass.kumi.systems/api/interpreter', ...
+    'https://overpass.openstreetmap.ru/api/interpreter' ...
+    });
+parse(p, varargin{:});
+
+timeoutSec = max(5, p.Results.timeoutSec);
+queryTimeoutSec = max(5, p.Results.queryTimeoutSec);
+retriesPerEndpoint = max(1, round(p.Results.retriesPerEndpoint));
+useCachedOnFailure = (p.Results.useCachedOnFailure == 1);
+endpoints = p.Results.endpoints;
+
 inputPath = fullfile(scenarioNameStr, 'Input');
 generatedEnvironmentFile = 'OutdoorGeneratedFromLatLon.amf';
 generatedEnvironmentPath = fullfile(inputPath, generatedEnvironmentFile);
@@ -20,10 +38,28 @@ fprintf(['Generating outdoor AMF from open-access OSM API ', ...
     '(lat=%.7f, lon=%.7f, radius=%.1fm).\n'], ...
     latitude, longitude, queryRadiusMeters);
 
-buildingPolygons = fetchBuildingFootprints(latitude, longitude, queryRadiusMeters);
+try
+    buildingPolygons = fetchBuildingFootprints(latitude, longitude, ...
+        queryRadiusMeters, timeoutSec, queryTimeoutSec, ...
+        retriesPerEndpoint, endpoints);
+catch err
+    if useCachedOnFailure && isNonEmptyFile(generatedEnvironmentPath)
+        warning(['OSM fetch failed (%s). Using existing generated AMF: %s'], ...
+            err.message, generatedEnvironmentPath);
+        return
+    end
+    rethrow(err)
+end
+
 if isempty(buildingPolygons)
-    error(['No OSM buildings found near latitude/longitude. ', ...
-        'Increase outdoorQueryRadius or choose a denser area.']);
+    if useCachedOnFailure && isNonEmptyFile(generatedEnvironmentPath)
+        warning(['No OSM buildings found for queried area. ', ...
+            'Using existing generated AMF: %s'], generatedEnvironmentPath);
+        return
+    else
+        error(['No OSM buildings found near latitude/longitude. ', ...
+            'Increase outdoorQueryRadius or choose a denser area.']);
+    end
 end
 
 meshObjects = buildMeshObjectsFromFootprints(buildingPolygons, queryRadiusMeters);
@@ -37,34 +73,42 @@ end
 
 
 %% OSM fetch
-function buildingPolygons = fetchBuildingFootprints(latitude, longitude, queryRadiusMeters)
-query = sprintf(['[out:json][timeout:30];', ...
+function buildingPolygons = fetchBuildingFootprints(latitude, longitude, ...
+    queryRadiusMeters, timeoutSec, queryTimeoutSec, retriesPerEndpoint, endpoints)
+query = sprintf(['[out:json][timeout:%d];', ...
     '(way["building"](around:%.1f,%.8f,%.8f););', ...
     '(._;>;);', ...
-    'out body;'], queryRadiusMeters, latitude, longitude);
-
-endpoints = { ...
-    'https://overpass-api.de/api/interpreter', ...
-    'https://overpass.kumi.systems/api/interpreter', ...
-    'https://overpass.openstreetmap.ru/api/interpreter' ...
-    };
+    'out body;'], round(queryTimeoutSec), queryRadiusMeters, latitude, longitude);
 
 response = [];
-lastErr = '';
-options = weboptions('Timeout', 60, 'ContentType', 'json');
+errMsgs = {};
+options = weboptions('Timeout', timeoutSec, 'ContentType', 'json');
 encodedQuery = char(java.net.URLEncoder.encode(query, 'UTF-8'));
 for idx = 1:numel(endpoints)
-    try
-        url = sprintf('%s?data=%s', endpoints{idx}, encodedQuery);
-        response = webread(url, options);
+    for attempt = 1:retriesPerEndpoint
+        try
+            url = sprintf('%s?data=%s', endpoints{idx}, encodedQuery);
+            response = webread(url, options);
+            break
+        catch err
+            errMsgs{end+1} = sprintf('[%s try %d/%d] %s', ... %#ok<AGROW>
+                endpoints{idx}, attempt, retriesPerEndpoint, err.message);
+            pause(min(2, 0.2 * attempt));
+        end
+    end
+    if ~isempty(response)
         break
-    catch err
-        lastErr = err.message;
     end
 end
 
 if isempty(response) || ~isfield(response, 'elements')
-    error('Unable to fetch OSM data from Overpass endpoints: %s', lastErr);
+    maxMsgs = min(numel(errMsgs), 4);
+    if maxMsgs == 0
+        msg = 'unknown failure';
+    else
+        msg = strjoin(errMsgs(1:maxMsgs), ' | ');
+    end
+    error('Unable to fetch OSM data from Overpass endpoints: %s', msg);
 end
 
 elements = response.elements;
@@ -396,4 +440,13 @@ if iscell(elements)
 else
     el = elements(idx);
 end
+end
+
+function tf = isNonEmptyFile(pathStr)
+tf = false;
+if ~isfile(pathStr)
+    return
+end
+d = dir(pathStr);
+tf = ~isempty(d) && d.bytes > 0;
 end
