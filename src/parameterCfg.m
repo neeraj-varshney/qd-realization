@@ -53,6 +53,35 @@ para = fieldToNum(para, 'indoorSwitch', [0,1], 1);
 % = 'Case1'
 para.inputScenarioName = scenarioNameStr;
 
+% Optional geo coordinates for outdoor auto-generation.
+% Backward compatible: if omitted, legacy behavior is unchanged.
+if isfield(para, 'attitude') && ~isfield(para, 'latitude')
+    para.latitude = para.attitude;
+    warning('Field ''attitude'' is deprecated. Use ''latitude'' instead.');
+end
+para = fieldToNum(para, 'latitude', [], nan);
+para = fieldToNum(para, 'longitude', [], nan);
+para = fieldToNum(para, 'outdoorQueryRadius', [], 150);
+
+if xor(isnan(para.latitude), isnan(para.longitude))
+    error('Both ''latitude'' and ''longitude'' must be defined together.');
+end
+
+if ~isnan(para.latitude) && ~isnan(para.longitude)
+    para.environmentFileName = generateOutdoorAmfFromLatLon(...
+        scenarioNameStr, para.latitude, para.longitude, para.outdoorQueryRadius);
+    % Geo-generated environment is outdoor by definition.
+    if para.indoorSwitch ~= 0
+        warning('latitude/longitude provided: forcing indoorSwitch=0 for outdoor scenario.');
+        para.indoorSwitch = 0;
+    end
+    % Geo inputs can change often, force CAD cache refresh.
+    cache = fullfile(scenarioNameStr, 'Input/cachedCadOutput.mat');
+    if isfile(cache)
+        delete(cache)
+    end
+end
+
 % n is the total number of time divisions. If n  = 100 and t  = 10, then we
 % have 100 time divisions for 10 seconds. Each time division is 0.1 secs in
 % length

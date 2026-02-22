@@ -28,6 +28,21 @@ No toolboxes are needed to run the code.
 * The software is configured to run the `examples/BoxLectureRoom` scenario by default.
 * Run the `main.m` script
 
+### Outdoor From Geo Coordinates
+You can auto-generate an outdoor AMF/XML environment from open-access OpenStreetMap (Overpass API) by adding the following fields in your scenario `Input/paraCfgCurrent.txt`:
+
+```
+latitude	40.7484
+longitude	-73.9857
+outdoorQueryRadius	120
+```
+
+Notes:
+* `latitude` and `longitude` must be provided together.
+* `outdoorQueryRadius` is optional (meters, default: `150`).
+* For backward compatibility, if `latitude`/`longitude` are not present, legacy behavior is unchanged.
+* The generated file is written in `Input/OutdoorGeneratedFromLatLon.amf` and used as `environmentFileName`.
+
 ### Documentation
 More details about the software can be found in the documentation ([docs/Documentation.pdf](docs/Documentation.pdf)).
 

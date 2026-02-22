@@ -53,7 +53,7 @@ end
 
 %% Input
 % Leave empty for default 'ScenarioTest'
-scenarioNameStr = 'examples/SensingFourTargets';
+scenarioNameStr = 'examples/OutdoorGeoCityBlock';
 
 if ~isempty(scenarioNameStr)
     fprintf('Use customized scenario: %s.\n',scenarioNameStr);
