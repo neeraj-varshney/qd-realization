@@ -46,6 +46,32 @@ Notes:
 ### Documentation
 More details about the software can be found in the documentation ([docs/Documentation.pdf](docs/Documentation.pdf)).
 
+### Generate Boulic Targets From `paraCfgCurrent.txt`
+You can auto-generate `TargetBase*.dat` and `TargetJoints*.dat` in a scenario `Input/` folder by enabling:
+
+```
+switchGenerateBoulicTargets	1
+boulicNumberOfTargets	4
+boulicStartXRange	[-80,80]
+boulicStartYRange	[-80,80]
+boulicVelocityRange	[0.5,1.8]
+boulicDirectionRangeDeg	[0,360]
+boulicMinStartSeparation	1.0
+```
+
+Optional fields:
+* `boulicTemplateScenario` (default: `examples/SensingTwoTargets`)
+* `boulicRandomSeed` (if omitted, random seed is refreshed every generation)
+* `boulicThighHeight` (meters, default: inferred from template)
+* `boulicSpineHeightRatio` (default: inferred from template)
+* `boulicSwingClearance` (meters, default: `0.14`)
+* `boulicGroundZ` (meters, default: `0.0`)
+
+Notes:
+* Generation is opt-in (`switchGenerateBoulicTargets=1`); all previous examples remain unchanged by default.
+* Targets are generated before loading in `targetCfg`, and files are written in the scenario `Input/` folder.
+* The generator uses Boulic paper-driven spatio-temporal gait equations for body/pelvis motion and procedural full-body kinematics.
+
 ## Features
 1. Open-source
 1. Ray-tracing based on the method of images

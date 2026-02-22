@@ -20,3 +20,10 @@ enablePhaseOutput	1
 latitude	40.7484
 longitude	-73.9857
 outdoorQueryRadius	60
+switchGenerateBoulicTargets	1
+boulicNumberOfTargets	1
+boulicVelocityRange	[1,1]
+boulicStartXRange	[0,0]
+boulicStartYRange	[-30,-30]
+boulicDirectionRangeDeg	[0,0]
+boulicGroundZ	0

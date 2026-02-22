@@ -43,6 +43,10 @@ function  trgCfg  = targetCfg(paraCfg)
 % Find list of file in input folder
 scenarioNameStr = paraCfg.inputScenarioName;
 inputPath = fullfile(scenarioNameStr, 'Input');
+
+% Optional: auto-generate Boulic target trajectories from paraCfg fields.
+generateBoulicTargetsFromParaCfg(paraCfg);
+
 fileList = dir(inputPath);
 % Count target position files
 numberOfTargets = sum(arrayfun(@(x) startsWith(x.name,'TargetBase'), ...
